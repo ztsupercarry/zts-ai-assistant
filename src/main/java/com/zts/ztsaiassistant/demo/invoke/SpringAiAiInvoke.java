@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
  * 这个类会在项目启动时真的去调一次模型：一旦模型/端点配置有问题，启动会直接失败。
  * 用 zts.ai.demo.invoke.enabled=false 可以跳过它（默认 true，保持原有行为）。
  */
-@Component
+//@Component
 //@ConditionalOnProperty(name = "zts.ai.demo.invoke.enabled", havingValue = "true", matchIfMissing = true)
 public class SpringAiAiInvoke implements CommandLineRunner {
 
