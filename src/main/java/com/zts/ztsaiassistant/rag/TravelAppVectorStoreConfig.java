@@ -28,8 +28,8 @@ public class TravelAppVectorStoreConfig {
         // 加载文档
         List<Document> documents = travelAppDocumentLoader.loadMrakdowns();
         // 自动补充关键词元信息
-        List<Document> enrichedDocuments = myKeywordEnricher.enrichDocuments(documents);
-        simpleVectorStore.add(enrichedDocuments);
+//        List<Document> enrichedDocuments = myKeywordEnricher.enrichDocuments(documents);
+        simpleVectorStore.add(documents);
         return simpleVectorStore;
     }
 
