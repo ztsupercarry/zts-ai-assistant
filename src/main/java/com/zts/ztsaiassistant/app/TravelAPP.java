@@ -1,18 +1,19 @@
 package com.zts.ztsaiassistant.app;
 
 import com.zts.ztsaiassistant.advisor.MyLoggerAdvisor;
-import com.zts.ztsaiassistant.chatmemory.FileBasedChatMemory;
-import com.zts.ztsaiassistant.chatmemory.FileChatMemoryRepository;
-import io.swagger.v3.core.filter.SpecFilter;
+import com.zts.ztsaiassistant.rag.QueryRewriter;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.ChatMemoryRepository;
 import org.springframework.ai.chat.memory.InMemoryChatMemoryRepository;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -33,7 +34,7 @@ public class TravelAPP {
      */
     public TravelAPP(ChatModel dashscopeChatModel) {
         // 初始化基于文件的对话记忆
-//        String fileDir = System.getProperty("user.dir") + "/chat_memory";
+//        String fileDir = System.getProperty("user.dir") + "/tmp/chat_memory";
 //        FileChatMemoryRepository repository = new FileChatMemoryRepository(fileDir);
         // 初始化基于内存的对话记忆
         ChatMemoryRepository repository = new InMemoryChatMemoryRepository();
@@ -53,6 +54,7 @@ public class TravelAPP {
 
     /**
      * AI 基础对话（支持多轮对话记忆）
+     *
      * @param message
      * @param chatId
      * @return
@@ -96,6 +98,46 @@ public class TravelAPP {
 
 //        log.info("travelReport: {}", travelReport);
         return travelReport;
+    }
+
+    // AI 旅行规划知识库问答功能
+
+    @Resource
+    private VectorStore travelAppVectorStore;
+
+    @Resource
+    private VectorStore pgVectorVectorStore;
+
+    @Resource
+    private QueryRewriter queryRewriter;
+
+    /**
+     * 和 RAG 知识库进行对话
+     *
+     * @param message
+     * @param chatId
+     * @return
+     */
+    public String doChatWithRag(String message, String chatId) {
+        // 查询重写
+        String rewrittenMessage = queryRewriter.doQueryRewrite(message);
+        ChatResponse chatResponse = chatClient
+                .prompt()
+                .user(rewrittenMessage)
+                .advisors(spec -> spec.param(ChatMemory.CONVERSATION_ID, chatId))
+                // 应用 RAG 知识库问答
+                .advisors(QuestionAnswerAdvisor.builder(travelAppVectorStore).build())
+                // 应用 RAG 检索增强服务（基于 PgVector 向量存储）
+//                .advisors(QuestionAnswerAdvisor.builder(pgVectorVectorStore).build())
+                // 应用自定义的 RAG 检索增强服务（文档查询器 + 上下文增强器）
+//                .advisors(TravelAppRagCustomAdvisorFactory.creatTravelAppRagCustomAdvisor(
+//                        travelAppVectorStore, "自由行新手"))
+                .call()
+                .chatResponse();
+
+        String content = chatResponse.getResult().getOutput().getText();
+//        log.info("content: {}", content);
+        return content;
     }
 
 

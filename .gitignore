@@ -1,6 +1,6 @@
 ### CUSTOM ###
 application-local.yaml
-chat_memory
+tmp
 
 HELP.md
 target/
