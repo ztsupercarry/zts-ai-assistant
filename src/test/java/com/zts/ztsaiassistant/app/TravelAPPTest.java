@@ -3,9 +3,15 @@ package com.zts.ztsaiassistant.app;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,6 +20,10 @@ class TravelAPPTest {
 
     @Resource
     private TravelAPP travelAPP;
+
+    /** MCP 客户端注册进来的工具（由 mcp-servers.json 里的 server 提供） */
+    @Resource
+    private ToolCallbackProvider mcpToolCallbackProvider;
 
     @Test
     void doChat() {
@@ -77,4 +87,99 @@ class TravelAPPTest {
         Assertions.assertNotNull(answer);
     }
 
+    @Test
+    void doChatWithMcp() {
+        String chatId = UUID.randomUUID().toString();
+        // 测试图片搜索 MCP
+        String message = "帮我搜索一些成都著名景点的图片";
+        String answer =  travelAPP.doChatWithMcp(message, chatId);
+        Assertions.assertNotNull(answer);
+    }
+
+    /*
+    AI 生成的用于测试是否能正确调用 MCP 工具的测试代码
+    /**
+     * 第 1 层：MCP 工具是否注册成功。
+     * 工具数为 0 => MCP server 没连上（配置错误 / 子进程启动失败 / 首次 npx 下载超时），
+     * 这种情况下后面问什么都"看起来正常"，其实模型根本无工具可用。
+     * /
+    @Test
+    void mcpToolsRegistered() {
+        ToolCallback[] callbacks = mcpToolCallbackProvider.getToolCallbacks();
+        List<String> names = new ArrayList<>();
+        for (ToolCallback cb : callbacks) {
+            names.add(cb.getToolDefinition().name());
+        }
+        System.out.println("[MCP] 注册工具数 = " + callbacks.length + " -> " + names);
+
+        assertTrue(callbacks.length > 0,
+                "MCP 工具数为 0，MCP 服务没有被成功调用；请检查 mcp-servers.json 以及各 server 能否正常启动");
+        // 高德地图 MCP 至少要有这几个核心工具
+        assertTrue(names.contains("maps_weather"), "缺少 maps_weather，实际工具：" + names);
+        assertTrue(names.stream().anyMatch(n -> n.startsWith("maps_")),
+                "没有高德地图工具，实际工具：" + names);
+    }
+
+    /**
+     * 第 2/3 层：判断 MCP 是否真的参与了一次对话。
+     *
+     * 核心手段是「地面真值比对」：
+     * 先自己直接调用 MCP 工具拿到真实数据，再让 travelAPP.doChatWithMcp 回答同一个问题，
+     * 最后断言回答里的关键字段和工具返回一致 —— 这是唯一能区分「真调用」和「模型自己编」的办法。
+     *
+     * 注意：本项目用的是 DashScope multi-model 端点，工具调用在服务端由 DashScope 完成，
+     * 客户端拿到的 AssistantMessage.hasToolCalls() 恒为 false，因此不能靠它判断。
+     * /
+    @Test
+    void doChatWithMcpAiTest() {
+        // 0) 工具必须已注册，否则直接失败（比 assertNotNull 有意义）
+        ToolCallback[] callbacks = mcpToolCallbackProvider.getToolCallbacks();
+        assertTrue(callbacks.length > 0, "MCP 未注册任何工具，无法进行 MCP 调用验证");
+
+        // 1) 地面真值：直接调用 maps_weather 拿上海天气
+        String truth = callTool(callbacks, "maps_weather", "{\"city\":\"上海\"}");
+        assertNotNull(truth, "maps_weather 工具调用失败，无法获取地面真值");
+        System.out.println("[MCP] 地面真值 maps_weather(上海) = " + excerpt(truth, 200));
+
+        Matcher t = Pattern.compile("\\\\?\"daytemp\\\\?\"\\s*:\\s*\\\\?\"(\\d+)").matcher(truth);
+        assertTrue(t.find(), "地面真值里没有解析到 daytemp，原始返回：" + excerpt(truth, 200));
+        String expectedTemp = t.group(1);
+
+        // 2) 走 travelAPP 的 MCP 对话链路
+        String chatId = UUID.randomUUID().toString();
+        String question = "上海静安区今天天气怎么样？请务必使用地图工具查询后回答。";
+        String answer = travelAPP.doChatWithMcp(question, chatId);
+        System.out.println("[MCP] doChatWithMcp 回答 = " + excerpt(answer, 300));
+
+        // 3) 判定：回答是否复现了只有 MCP 才拿得到的实时数据
+        assertNotNull(answer);
+        assertFalse(answer.isBlank(), "回答为空");
+        assertTrue(answer.contains(expectedTemp),
+                "回答中没有出现 MCP 返回的温度 " + expectedTemp + "℃，说明这次对话很可能没有真正调用 MCP 工具。"
+                        + "回答=" + excerpt(answer, 300));
+        System.out.println("[MCP] 判定通过：回答包含 MCP 工具返回的温度 " + expectedTemp + "℃");
+    }
+
+    /** 按名字调用 MCP 工具，返回原始 JSON；找不到或调用失败返回 null * /
+    private static String callTool(ToolCallback[] callbacks, String toolName, String jsonArgs) {
+        for (ToolCallback cb : callbacks) {
+            if (toolName.equals(cb.getToolDefinition().name())) {
+                try {
+                    return cb.call(jsonArgs);
+                } catch (Exception e) {
+                    System.out.println("[MCP] 调用 " + toolName + " 失败: " + e.getMessage());
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
+    private static String excerpt(String s, int max) {
+        if (s == null) {
+            return "null";
+        }
+        return s.length() <= max ? s.replace("\n", " ") : s.substring(0, max).replace("\n", " ") + "...";
+    }
+*/
 }
