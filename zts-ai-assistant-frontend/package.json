@@ -1,5 +1,5 @@
 {
-  "name": "vue-project",
+  "name": "zts-ai-assistant-frontend",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -10,11 +10,12 @@
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
     "lint": "run-s \"lint:*\"",
-    "lint:oxlint": "oxlint vue-project --fix",
-    "lint:eslint": "eslint vue-project --fix --cache",
+    "lint:oxlint": "oxlint . --fix",
+    "lint:eslint": "eslint . --fix --cache",
     "format": "prettier --write --experimental-cli src"
   },
   "dependencies": {
+    "axios": "^1.7.9",
     "pinia": "^4.0.3",
     "vue": "^3.5.42",
     "vue-router": "^5.3.1"

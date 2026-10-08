@@ -5,6 +5,7 @@ import com.zts.ztsaiassistant.agent.model.AgentState;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -142,6 +143,17 @@ public abstract class BaseAgent {
                     state = AgentState.FINISHED;
                     results.add("Terminated: Reached max steps (" + maxSteps + ")");
                     sseEmitter.send("执行结束：达到最大步骤（" + maxSteps + ")");
+                }
+                // 推送模型的最终回复：think() 中模型不调用工具时会把助手消息记入 messageList，
+                // 这里取最后一条有内容的助手消息；前端以「Final: 」前缀识别，单独渲染成「最终回复」气泡
+                String finalAnswer = getMessageList().stream()
+                        .filter(msg -> msg instanceof AssistantMessage)
+                        .map(msg -> ((AssistantMessage) msg).getText())
+                        .filter(StrUtil::isNotBlank)
+                        .reduce((first, last) -> last)
+                        .orElse("");
+                if (StrUtil.isNotBlank(finalAnswer)) {
+                    sseEmitter.send("Final: " + finalAnswer);
                 }
                 // 正常完成
                 sseEmitter.complete();
