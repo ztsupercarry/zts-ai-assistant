@@ -13,6 +13,7 @@ const suggestions = [
 <template>
   <ChatRoom
     title="AI 超级智能体"
+    assistant-name="超级智能体"
     subtitle="提出你的需求，AI 智能体会自主思考并调用工具"
     placeholder="描述一个复杂任务，交给智能体逐步完成…"
     empty-text="把复杂任务交给我，我会先思考再动手"

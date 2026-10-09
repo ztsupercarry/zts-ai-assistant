@@ -35,8 +35,8 @@ src/
 │  ├─ request.ts          # axios 实例（baseURL / 超时 / 统一错误文案）+ resolveApiUrl
 │  └─ ai.ts               # doChatWithTravelAppSse / doChatWithManus 两个流式接口
 ├─ components/
-│  ├─ ChatRoom.vue        # 通用聊天室：消息列表 + 输入框 + 会话 ID + 流式开关
-│  └─ ChatMessageItem.vue # 单条消息气泡（用户靠右 / AI 靠左）
+│  ├─ ChatRoom.vue        # 通用聊天室：消息列表 + 输入框 + 昵称 / 分段模式等配置
+│  └─ ChatMessageItem.vue # 单条消息气泡（用户靠右 / AI 靠左，支持 step/final/notice 样式）
 ├─ views/
 │  ├─ HomeView.vue        # 主页：应用切换卡片
 │  ├─ TravelAppView.vue   # 页面 1：AI 旅行规划助手
@@ -44,6 +44,7 @@ src/
 │  └─ NotFoundView.vue    # 404
 ├─ utils/
 │  ├─ sse.ts              # fetch + ReadableStream 的 SSE 客户端与解析器
+│  ├─ agentStream.ts      # 智能体 Step 分段器（每步一个气泡）
 │  ├─ id.ts               # 会话 ID / 消息 ID 生成
 │  └─ format.ts           # 时间格式化
 ├─ types/chat.ts          # ChatMessage / ChatStreamPayload 等类型
@@ -104,6 +105,10 @@ Step 4: 工具doTerminate返回的结果：任务结束
 | `执行结束 / 错误 ...` | 系统提示气泡 |
 | 出现过步骤标记之后的无标记消息 | 视为最终回复，新开「最终回复」气泡 |
 | 其它 | 追加到当前气泡 |
+
+气泡上方的昵称由 `assistant-name` 决定：旅行规划页是「旅行规划助手」，智能体页是「超级智能体」，
+缺省为「AI 助手」。而 `Step N` / `最终回复` 这个小标题显示在**气泡内部的开头**，用一条虚线分隔——
+一眼就能看出这段话属于第几步。
 
 用法：页面给聊天室加一个 `stream-mode="steps"` 即可（旅行规划助手用默认的 `text` 模式，全部增量写进同一个气泡）。
 

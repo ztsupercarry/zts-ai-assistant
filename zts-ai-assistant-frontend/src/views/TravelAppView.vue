@@ -13,6 +13,7 @@ const suggestions = [
 <template>
   <ChatRoom
     title="AI 旅行规划助手"
+    assistant-name="旅行规划助手"
     subtitle="通过 SSE 调用 doChatWithTravelAppSse，按会话 ID 保留多轮上下文"
     placeholder="说说你想去哪、几天、预算和同行人，我来帮你规划…"
     empty-text="告诉我你的目的地和出行计划，我帮你安排行程"

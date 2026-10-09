@@ -7,10 +7,17 @@ import { formatTime } from '@/utils/format'
 /** 超过这个长度就默认折叠（工具返回的 JSON 往往很长） */
 const COLLAPSE_LIMIT = 420
 
-const props = defineProps<{
-  /** 要渲染的一条聊天记录 */
-  message: ChatMessage
-}>()
+const props = withDefaults(
+  defineProps<{
+    /** 要渲染的一条聊天记录 */
+    message: ChatMessage
+    /** AI 气泡上显示的昵称 */
+    assistantName?: string
+  }>(),
+  {
+    assistantName: 'AI 助手',
+  },
+)
 
 const emit = defineEmits<{
   /** 点击「重新生成」 */
@@ -29,14 +36,11 @@ const isError = computed(() => props.message.status === 'error')
 /** 智能体单步执行结果 */
 const isStep = computed(() => props.message.variant === 'step')
 
-/** 最终回复 */
-const isFinal = computed(() => props.message.variant === 'final')
-
 /** 系统提示（执行完成 / 执行出错） */
 const isNotice = computed(() => props.message.variant === 'notice')
 
-/** 气泡标题 */
-const displayName = computed(() => props.message.label || 'AI 助手')
+/** 气泡内部的小标题（Step 1 / 最终回复 / 执行完成…），没有标签时为空 */
+const bubbleTitle = computed(() => props.message.label ?? '')
 
 /** 头像文字 */
 const avatarText = computed(() => {
@@ -60,12 +64,15 @@ const collapsed = computed(() => collapsible.value && !expanded.value)
     </div>
 
     <div class="msg__main">
-      <div v-if="!isNotice" class="msg__meta">
-        <span class="msg__name">{{ isUser ? '我' : displayName }}</span>
+      <div class="msg__meta">
+        <span class="msg__name">{{ isUser ? '我' : assistantName }}</span>
         <span class="msg__time">{{ formatTime(message.createdAt) }}</span>
       </div>
 
       <div class="msg__bubble" :class="{ 'msg__bubble--error': isError }">
+        <!-- Step x / 最终回复 等小标题放在气泡开头 -->
+        <div v-if="bubbleTitle" class="msg__bubble-title">{{ bubbleTitle }}</div>
+
         <span v-if="message.content" class="msg__text" :class="{ 'msg__text--clamped': collapsed }">
           {{ message.content }}
         </span>
@@ -152,10 +159,31 @@ const collapsed = computed(() => collapsible.value && !expanded.value)
   font-weight: 600;
 }
 
-/* 步骤气泡的标题用等宽字体，便于和内容对齐 */
-.msg--step .msg__name {
+/* 气泡内部的小标题：Step x / 最终回复 / 执行完成 */
+.msg--ai .msg__bubble-title {
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   color: var(--accent);
+  border-bottom: 1px dashed var(--panel-border);
+}
+
+.msg--ai.msg--step .msg__bubble-title {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.msg--final .msg__bubble-title {
+  color: #a9c2ff;
+  border-bottom-color: rgba(120, 150, 255, 0.35);
+}
+
+.msg--notice .msg__bubble-title {
+  margin-bottom: 4px;
+  padding-bottom: 0;
+  color: var(--text-muted);
+  border-bottom: none;
 }
 
 .msg__bubble {

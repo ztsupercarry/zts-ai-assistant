@@ -27,7 +27,7 @@ export interface ChatMessage {
   createdAt: number
   /** 气泡类型，缺省按普通文本渲染 */
   variant?: ChatBlockVariant
-  /** 气泡标题，例如 Step 1 / 最终回复；缺省显示「AI 助手」 */
+  /** 气泡内部的小标题（例如 Step 1 / 最终回复），没有则不显示 */
   label?: string
   /** 步骤序号，仅 variant 为 step 时存在 */
   step?: number

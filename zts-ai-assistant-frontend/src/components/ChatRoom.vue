@@ -12,6 +12,8 @@ const props = withDefaults(
     title: string
     /** 一句话描述 */
     subtitle?: string
+    /** AI 气泡上显示的昵称（例如「旅行规划助手」「超级智能体」） */
+    assistantName?: string
     /** 输入框占位提示 */
     placeholder?: string
     /** 空状态文案 */
@@ -33,6 +35,7 @@ const props = withDefaults(
   }>(),
   {
     subtitle: '',
+    assistantName: 'AI 助手',
     placeholder: '输入你的问题，Enter 发送，Shift + Enter 换行',
     emptyText: '还没有聊天记录，先问一句试试～',
     suggestions: () => [],
@@ -280,10 +283,14 @@ async function resetConversation(): Promise<void> {
   inputRef.value?.focus()
 }
 
-/** Enter 发送、Shift + Enter 换行；中文输入法组合期间的回车不发送 */
+/**
+ * Enter 发送、Shift + Enter 换行；中文输入法组合期间的回车不发送。
+ * 注意：Vue 的 `@keydown.enter` 只要按下的键是 Enter 就会触发（按住 Shift 同样命中），
+ * 所以必须在这里显式放行 Shift + Enter，否则会拦掉浏览器默认的换行。
+ */
 function handleEnter(event: KeyboardEvent): void {
   if (event.isComposing || event.keyCode === 229) return
-  // 正在生成时不抢回车：输入框仍可继续打字，交给浏览器正常换行
+  if (event.shiftKey) return
   if (loading.value) return
   event.preventDefault()
   void submit()
@@ -350,6 +357,7 @@ onBeforeUnmount(() => {
         v-for="item in messages"
         :key="item.id"
         :message="item"
+        :assistant-name="assistantName"
         @retry="retryLast"
       />
     </div>
